@@ -292,10 +292,6 @@ The schema validation uses Jinja2 templates for dynamic script generation:
 5. Use `no_log: true` for sensitive operations
 6. Maintain template compatibility with existing variable structure
 
-## License
 
-[Add your license information here]
 
-## Support
 
-[Add support contact information here]
