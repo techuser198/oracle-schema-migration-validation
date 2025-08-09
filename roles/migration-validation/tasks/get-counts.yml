@@ -1,0 +1,39 @@
+- name: Remove previous output file
+  file:
+    path: "{{ output_file }}"
+    follow: no
+    state: absent
+
+- name: "Set connection string"
+  set_fact:
+    db_conn: "{{ db_user | upper | trim }}/{{ db_password | trim }}@{{ db_host | trim }}/{{ db_service | trim }}"
+  #no_log: true
+
+- name: "Get Table Counts for Oracle schema {{ db_schema }} on host {{ db_host }}."
+  shell: |
+    bash -lc "
+    sqlplus -S {{ db_conn }} <<EOF
+    SET PAGESIZE 1000
+    SET TERMOUT OFF
+    SET FEEDBACK OFF
+    SET MARKUP CSV ON
+    SET HEADING OFF
+
+    SPOOL {{ output_file }}
+
+    select lower(table_name),
+    to_number(extractvalue(xmltype(dbms_xmlgen.getxml('select count(*) c from '||owner||'.'||table_name)),'/ROWSET/ROW/C')) as count
+    from all_tables
+    where owner = '{{ db_schema }}' and IOT_NAME is null order by table_name;
+
+    SPOOL off
+    SET MARKUP CSV OFF
+    /
+
+    quit
+    EOF
+    "
+  #no_log: true
+  async: 1800
+  poll: 0
+  register: get_counts_task

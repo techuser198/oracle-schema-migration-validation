@@ -1,0 +1,21 @@
+source:
+  db_schema: SOURCE_SCHEMA_NAME
+  db_schema_password: SCHEMA_PASSWORD
+  db_host: db-source-host
+  db_port: 1521
+  db_name: SOURCE_DB_NAME
+  db_service: SOURCE_DB_SERVICE_NAME
+  masteruser:
+    m_user: PRIVILAGE_USER
+    m_password: PRIVILAGE_USER_PASSWORD
+
+target:
+  db_schema: TARGET_SCHEMA_NAME
+  db_schema_password: TARGET_SCHEMA_PASSWORD
+  db_host: db-target-host
+  db_port: 1521
+  db_name: TARGET_DB_NAME
+  db_service: TARGET_DB_SERVICE_NAME
+  masteruser:
+    m_user: PRIVILAGE_USER
+    m_password: PRIVILAGE_USER_PASSWORD

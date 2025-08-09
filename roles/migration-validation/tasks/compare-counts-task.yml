@@ -1,0 +1,83 @@
+- name: Compare schema table counts
+  block:
+  - name: Set output files
+    set_fact:
+      src_output_file: "/tmp/source_{{ source.db_schema }}_table_counts.csv"
+      trg_output_file: "/tmp/target_{{ target.db_schema }}_table_counts.csv"
+      compare_result: "/tmp/compare_table_counts.txt"
+
+  - name: Get Source DB {{ source.db_schema }}  Counts from {{ source.db_name }}
+    include_tasks: "get-counts.yml"
+    vars:
+      db_user: "{{ source.db_schema }}"
+      db_password: "{{ source.db_schema_password }}"
+      db_host: "{{ source.db_host }}"
+      db_service: "{{ source.db_service }}"
+      db_schema: "{{ source.db_schema }}"
+      output_file: "{{ src_output_file }}"
+    #no_log: true
+
+  - name: Set source task
+    set_fact:
+      source_count_task: "{{ get_counts_task }}"
+
+  - name: Get Source DB {{ target.db_schema }}  Counts from {{ target.db_name }}
+    include_tasks: "get-counts.yml"
+    vars:
+      db_user: "{{ target.db_schema }}"
+      db_password: "{{ target.db_schema_password }}"
+      db_host: "{{ target.db_host }}"
+      db_service: "{{ target.db_service }}"
+      db_schema: "{{ target.db_schema }}"
+      output_file: "{{ trg_output_file }}"
+    #no_log: true
+
+  - name: Set target task
+    set_fact:
+      target_count_task: "{{ get_counts_task }}"
+
+  - name: Waiting for get counts source task to complete.
+    async_status:
+      jid: "{{ source_count_task.ansible_job_id }}"
+    register: job_result
+    until: job_result.finished
+    retries: 180
+    delay: 10
+    no_log: true
+
+  - name: Waiting for get counts target task to complete.
+    async_status:
+      jid: "{{ target_count_task.ansible_job_id }}"
+    register: job_result
+    until: job_result.finished
+    retries: 180
+    delay: 10
+    no_log: true
+
+  - name: "Format source result file for oracle."
+    replace:
+      path: "{{ src_output_file }}"
+      regexp: '\"'
+      replace: ''
+
+  - name: "Format target result file for oracle."
+    replace:
+      path: "{{ trg_output_file }}"
+      regexp: '\"'
+      replace: ''
+
+  - name: "Compare counts for {{ source.db_schema | upper }} && {{ target.db_schema | upper }} between source and target "
+    command: bash roles/migration-validation/tasks/compare-counts.sh {{ src_output_file }} {{ trg_output_file }} {{ compare_result }}
+    register: compare_schema_output
+    ignore_errors: yes
+    no_log: true
+
+  - name: Display diff output
+    debug:
+      var: compare_schema_output.stdout_lines
+
+  - name: Fail if schema comparison was unsuccessful for any schema
+    fail:
+      msg: "Schema comparison failed for {{ source.db_schema | upper }} Or {{ target.db_schema | upper }}. Differences were found."
+    when:
+    - "'DIFFERENCES FOUND' in compare_schema_output.stdout"

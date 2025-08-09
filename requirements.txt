@@ -1,0 +1,60 @@
+# Migration Validation Requirements
+# ================================
+
+# System Requirements (to be installed via package manager):
+# - bash (for script execution and template processing)
+# - diff/diffutils (for side-by-side schema comparison)
+# - Oracle Instant Client + SQL*Plus (for database connectivity)
+# - ansible-core (version 2.12+)
+
+# Python Dependencies
+# ===================
+ansible-core>=2.12.0
+PyYAML>=5.4.1
+Jinja2>=3.0.0
+
+# Oracle Client Libraries (if using Python Oracle connectivity)
+# cx_Oracle>=8.3.0
+# oracledb>=1.0.0
+
+# Additional Ansible Collections (install via ansible-galaxy)
+# ===========================================================
+# ansible.posix
+# community.general
+
+# Development/Testing Dependencies (optional)
+# ===========================================
+# pytest>=6.0.0
+# ansible-lint>=5.0.0
+# yamllint>=1.26.0
+
+# Installation Notes:
+# ==================
+# 1. Install system packages first:
+#    Ubuntu/Debian: sudo apt update && sudo apt install -y bash diffutils python3-pip
+#    RHEL/CentOS: sudo yum install -y bash diffutils python3-pip
+#    
+# 2. Install Oracle Instant Client:
+#    - Download from Oracle website
+#    - Or use package manager if available
+#    - Ensure sqlplus is in PATH
+#
+# 3. Install Python dependencies:
+#    pip install -r requirements.txt
+#
+# 4. Install Ansible collections:
+#    ansible-galaxy collection install ansible.posix community.general
+#
+# 5. Verify installation:
+#    ansible --version
+#    sqlplus -v
+#
+# Schema Validation Features:
+# ==========================
+# The validate-schema operation compares 11 different Oracle object types:
+# - Tables, Columns, Sequences, Indexes, Constraints
+# - Triggers, Views, Synonyms, Privileges
+# - Object counts and database structure
+# 
+# Uses Jinja2 templates for dynamic script generation and supports
+# automatic cleanup of old comparison files.

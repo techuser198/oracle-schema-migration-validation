@@ -1,0 +1,6 @@
+- name: "Include vars for migration of {{ config }}"
+  include_vars:
+    file: "roles/migration-validation/vars/{{ config }}.yml"
+
+- name: "Run {{ operation }} task"
+  include_tasks: "roles/migration-validation/tasks/{{ operation }}-task.yml"

@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# This script compares database schema objects between source and target databases
+# It generates a summary log file with the results of the comparison
+SOURCE_DB="{{ source.db_service }}"
+TARGET_DB="{{ target.db_service }}"
+SOURCE_SCHEMA="{{ source.db_schema }}"
+TARGET_SCHEMA="{{ target.db_schema }}"
+
+
+SUFFIXES_SCHEMA_OBJ=("tables" "columns" "sequences" "indexes" "constraints" "triggers" "views" "synonyms" "privileges" "structure" "count")
+
+
+LOG_FILE="/tmp/diff_comparison_summary.log"
+echo "-------------------------------------------------" > "$LOG_FILE"
+echo "          DATABASE SCHEMA COMPARISON REPORT      " >> "$LOG_FILE"
+echo "-------------------------------------------------" >> "$LOG_FILE"
+echo "" >> "$LOG_FILE"
+
+compare_files() {
+    local source_file="$1"
+    local target_file="$2"
+    local diff_file="$3"
+    local suffix="$4"
+
+    echo "Checking: $suffix" | tee -a "$LOG_FILE"
+    echo "--------------------------------------" | tee -a "$LOG_FILE"
+
+    if [[ -f "$source_file" && -f "$target_file" ]]; then
+        diff --side-by-side --suppress-common-lines \
+                <(grep -v '^[[:space:]]*$' "$source_file" | sed 's/[[:space:]]\+$//') \
+                <(grep -v '^[[:space:]]*$' "$target_file" | sed 's/[[:space:]]\+$//') > "$diff_file"
+
+        if [[ -s "$diff_file" ]]; then
+            echo "[DIFFERENCES FOUND] - See: $diff_file" | tee -a "$LOG_FILE"
+        else
+            echo "[MATCH] - No differences detected." | tee -a "$LOG_FILE"
+        fi
+    else
+        echo "[SKIPPED] - One or both files are missing." | tee -a "$LOG_FILE"
+    fi
+    echo "" | tee -a "$LOG_FILE"
+}
+
+echo "Starting comparison for AFDBA schema..." | tee -a "$LOG_FILE"
+for suffix in "${SUFFIXES_SCHEMA_OBJ[@]}"; do
+    SOURCE_FILE="/tmp/source_${SOURCE_DB}_${SOURCE_SCHEMA}-${suffix}.csv"
+    TARGET_FILE="/tmp/target_${TARGET_DB}_${TARGET_SCHEMA}-${suffix}.csv"
+    DIFF_FILE="/tmp/diff_${SOURCE_DB}_${TARGET_DB}_${TARGET_SCHEMA}-${suffix}.txt"
+
+    compare_files "$SOURCE_FILE" "$TARGET_FILE" "$DIFF_FILE" "$suffix"
+done
+
+
+echo "-------------------------------------------------" | tee -a "$LOG_FILE"
+echo "    COMPARISON PROCESS COMPLETED SUCCESSFULLY    " | tee -a "$LOG_FILE"
+echo "-------------------------------------------------" | tee -a "$LOG_FILE"
+echo "Review the log file at: $LOG_FILE"

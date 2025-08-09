@@ -1,0 +1,29 @@
+- name: "Execute SQL file for Oracle schema {{ db_schema }} on database {{ db_host }}."
+  block:
+  - name: "Set connection string"
+    set_fact:
+      db_conn: "{{ db_user | upper | trim }}/{{ db_password | trim }}@{{ db_host | trim }}/{{ db_service | trim }}"
+    #no_log: true
+
+  - name: "Set output file parameter (spool to file)"
+    set_fact:
+      output: "spool {{ output_file }}"
+    when: output_file is defined
+
+  - name: "Execute SQL file"
+    shell: |
+      bash -lc "
+      sqlplus -S {{ db_conn }} @/dev/null {{ sql_parameters | default('') }} <<EOF
+      set verify off
+      {{ output | default('') }}
+      @{{ sql_file }}
+      {{ 'spool off' if output_file is defined else '' }}
+      exit;
+      EOF
+      " 2>&1
+    register: script_output
+    ignore_errors: true
+    #no_log: true
+
+  - debug:
+      msg: "{{ script_output.stdout }}"

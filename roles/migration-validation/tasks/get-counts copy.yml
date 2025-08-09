@@ -1,0 +1,56 @@
+- name: Remove previous output file
+  file:
+    path: "{{ output_file }}"
+    follow: no
+    state: absent
+
+- name: "Set connection string"
+  set_fact:
+    db_conn: "{{ db_user | upper | trim }}/{{ db_password | trim }}@{{ db_host | trim }}/{{ db_service | trim }}"
+  #no_log: true
+
+- name: "Get Table Counts for Oracle schema {{ db_schema }} on host {{ db_host }}."
+  shell: |
+    bash -lc "
+    sqlplus -S {{ db_conn }} <<EOF
+    SET PAGESIZE 1000
+    SET TERMOUT OFF
+    SET FEEDBACK OFF
+    SET SERVEROUTPUT ON
+    SET HEADING OFF
+
+    SPOOL {{ output_file }}
+
+    DECLARE
+      v_count NUMBER;
+      v_sql VARCHAR2(1000);
+    BEGIN
+      FOR rec IN (
+        SELECT table_name 
+        FROM all_tables 
+        WHERE owner = '{{ db_schema }}' 
+        AND (iot_type IS NULL OR iot_type != 'IOT_OVERFLOW')
+        ORDER BY table_name
+      ) LOOP
+        BEGIN
+          v_sql := 'SELECT COUNT(*) FROM {{ db_schema }}.' || rec.table_name;
+          EXECUTE IMMEDIATE v_sql INTO v_count;
+          DBMS_OUTPUT.PUT_LINE(LOWER(rec.table_name) || ',' || v_count);
+        EXCEPTION
+          WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE(LOWER(rec.table_name) || ',ERROR');
+        END;
+      END LOOP;
+    END;
+    /
+
+    SPOOL off
+    /
+
+    quit
+    EOF
+    "
+  #no_log: true
+  async: 1800
+  poll: 0
+  register: get_counts_task

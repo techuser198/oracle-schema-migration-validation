@@ -1,0 +1,130 @@
+- name: "Compare {{ source.db_schema }}/{{ source.db_host }} && {{ target.db_schema }}/{{ target.db_host }} "
+  block:
+  - name: Find and delete old Oracle schema dump files
+    find:
+      paths: /tmp
+      patterns:
+      - "source_{{ source.db_service }}_{{ source.db_schema }}-*.csv"
+      - "target_{{ target.db_service }}_{{ target.db_schema }}-*.csv"
+      - "diff_{{ source.db_service }}-{{ source.db_schema }}_{{ target.db_service }}-{{ target.db_schema }}-*.txt"
+      - "diff_comparison_summary.log"
+      - "validate-schema-script.sh"
+    register: old_dump_files
+
+  - name: Remove old Oracle schema dump files
+    file:
+      path: "{{ item.path }}"
+      state: absent
+    with_items: "{{ old_dump_files.files }}"
+    when: old_dump_files.matched > 0
+    no_log: true
+
+  - name: Get dump for source Oracle schema {{ source.db_schema }} on database {{ source.db_service }}/{{ source.db_host }}
+    include_tasks: "execute-sql-file-oracle.yml"
+    loop:
+    - {sql_file: "dump-oracle-schema-tables.sql", suffix: "tables"}
+    - {sql_file: "dump-oracle-schema-columns.sql", suffix: "columns"}
+    - {sql_file: "dump-oracle-schema-sequences.sql", suffix: "sequences"}
+    - {sql_file: "dump-oracle-schema-indexes.sql", suffix: "indexes"}
+    - {sql_file: "dump-oracle-schema-constraints.sql", suffix: "constraints"}
+    - {sql_file: "dump-oracle-schema-triggers.sql", suffix: "triggers"}
+    - {sql_file: "dump-oracle-schema-views.sql", suffix: "views"}
+    - {sql_file: "dump-oracle-schema-synonyms.sql", suffix: "synonyms"}
+    - {sql_file: "dump-oracle-schema-privileges.sql", suffix: "privileges"}
+    - {sql_file: "dump-oracle-object-count.sql", suffix: "count"}
+    - {sql_file: "schema-comp-structure.sql", suffix: "structure"}
+    loop_control:
+      loop_var: item
+    vars:
+      db_user: "{{ source.db_schema }}"
+      db_password: "{{ source.db_schema_password }}"
+      db_host: "{{ source.db_host }}"
+      db_service: "{{ source.db_service }}"
+      db_schema: "{{ source.db_schema }}"
+      output_file: "/tmp/source_{{ source.db_service }}_{{ source.db_schema }}-{{ item.suffix }}.csv"
+      sql_file: "roles/migration-validation/tasks/files/{{ item.sql_file }}"
+      sql_parameters: '"{{ source.db_schema }}"'
+    no_log: true
+
+  - name: Get dump for target Oracle schema {{ target.db_schema }} on database {{ target.db_service }}/{{ target.db_host }}
+    include_tasks: "execute-sql-file-oracle.yml"
+    loop:
+    - {sql_file: "dump-oracle-schema-tables.sql", suffix: "tables"}
+    - {sql_file: "dump-oracle-schema-columns.sql", suffix: "columns"}
+    - {sql_file: "dump-oracle-schema-sequences.sql", suffix: "sequences"}
+    - {sql_file: "dump-oracle-schema-indexes.sql", suffix: "indexes"}
+    - {sql_file: "dump-oracle-schema-constraints.sql", suffix: "constraints"}
+    - {sql_file: "dump-oracle-schema-triggers.sql", suffix: "triggers"}
+    - {sql_file: "dump-oracle-schema-views.sql", suffix: "views"}
+    - {sql_file: "dump-oracle-schema-synonyms.sql", suffix: "synonyms"}
+    - {sql_file: "dump-oracle-schema-privileges.sql", suffix: "privileges"}
+    - {sql_file: "dump-oracle-object-count.sql", suffix: "count"}
+    - {sql_file: "schema-comp-structure.sql", suffix: "structure"}
+    loop_control:
+      loop_var: item
+    vars:
+      db_user: "{{ target.db_schema }}"
+      db_password: "{{ target.db_schema_password }}"
+      db_host: "{{ target.db_host }}"
+      db_service: "{{ target.db_service }}"
+      db_schema: "{{ target.db_schema }}"
+      output_file: "/tmp/target_{{ target.db_service }}_{{ target.db_schema }}-{{ item.suffix }}.csv"
+      sql_file: "roles/migration-validation/tasks/files/{{ item.sql_file }}"
+      sql_parameters: '"{{ target.db_schema }}"'
+    no_log: true
+
+  - name: Format source AFDBA result files for Oracle
+    replace:
+      path: "/tmp/source_{{ source.db_service }}_{{ source.db_schema }}-{{ item.suffix }}.csv"
+      regexp: '\"'
+      replace: ''
+    loop:
+    - {suffix: "tables"}
+    - {suffix: "columns"}
+    - {suffix: "sequences"}
+    - {suffix: "indexes"}
+    - {suffix: "constraints"}
+    - {suffix: "triggers"}
+    - {suffix: "views"}
+    - {suffix: "synonyms"}
+    - {suffix: "privileges"}
+    - {suffix: "count"}
+    - {suffix: "structure"}
+
+  - name: Format Target AFDBA result files for Oracle
+    replace:
+      path: "/tmp/target_{{ target.db_service }}_{{ target.db_schema }}-{{ item.suffix }}.csv"
+      regexp: '\"'
+      replace: ''
+    loop:
+    - {suffix: "tables"}
+    - {suffix: "columns"}
+    - {suffix: "sequences"}
+    - {suffix: "indexes"}
+    - {suffix: "constraints"}
+    - {suffix: "triggers"}
+    - {suffix: "views"}
+    - {suffix: "synonyms"}
+    - {suffix: "privileges"}
+    - {suffix: "count"}
+    - {suffix: "structure"}
+
+  - name: Configure compare schema script
+    template:
+      src: validate-schema-script.sh.j2
+      dest: /tmp/validate-schema-script.sh
+
+  - name: "Compare {{ source.db_schema | upper }},{{ target.db_schema | upper }} between source and target "
+    command: bash /tmp/validate-schema-script.sh
+    register: compare_schema_output
+    ignore_errors: yes
+
+  - name: Display diff output
+    debug:
+      var: compare_schema_output.stdout_lines
+
+  - name: Fail if schema comparison was unsuccessful for any schema
+    fail:
+      msg: "Schema comparison failed. Differences were found."
+    when:
+    - "'DIFFERENCES FOUND' in compare_schema_output.stdout"
