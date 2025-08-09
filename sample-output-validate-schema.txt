@@ -1,0 +1,87 @@
+operation ran:
+
+./schema-migration-validation.sh validate-schema migration-zz
+
+
+
+output: 
+
+cat /tmp/diff_comparison_summary.log
+
+-------------------------------------------------
+          DATABASE SCHEMA COMPARISON REPORT
+-------------------------------------------------
+
+
+
+Starting comparison for AFDBA_ZZ & AFDBA_ZZ...
+Checking: tables
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: columns
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: sequences
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: indexes
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: constraints
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: triggers
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: views
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: synonyms
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: privileges
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: structure
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+Checking: count
+--------------------------------------
+[MATCH] - No differences detected.
+
+
+
+-------------------------------------------------
+    COMPARISON PROCESS COMPLETED SUCCESSFULLY
+-------------------------------------------------
+
